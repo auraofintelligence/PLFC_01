@@ -1,613 +1,413 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Settings, Users, Fish, Anchor, Captain, Ship, ClipboardList, FileText, Coins, Megaphone, FileCheck2, Boxes, Trophy, Map, Waves, Scale, BookOpen, MessageSquare, Calendar, Sparkles, ListChecks, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PLFC Super Hub 🎣</title>
+<style>
+  :root{
+    --bg: #f5fbff;
+    --ink:#0b1520;
+    --muted:#5a6b7a;
+    --card: rgba(255,255,255,0.85);
+    --border: rgba(0,0,0,0.08);
+    --ring: #7dd3fc; /* sky-300 */
+  }
+  html,body{height:100%;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji";color:var(--ink);background:var(--bg);}
+  /* Fish cursor */
+  body{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg fill='none'%3E%3Cpath d='M4 16 L10 10 L18 12 L24 8 L22 16 L24 24 L18 20 L10 22 Z' fill='%2300bcd4' opacity='0.95'/%3E%3Ccircle cx='18' cy='13' r='2' fill='%23fff'/%3E%3Ccircle cx='18.6' cy='13' r='1' fill='%23222'/%3E%3C/g%3E%3C/svg%3E") 8 8, auto}
+  .shell{position:relative;min-height:100svh;}
+  .wrap{max-width:1120px;margin:0 auto;padding:1rem;}
+  header{position:sticky;top:0;z-index:10;backdrop-filter:saturate(1.3) blur(8px);background:rgba(255,255,255,0.6);border-bottom:1px solid var(--border);} 
+  .hrow{display:flex;gap:.75rem;align-items:center;padding:.75rem 1rem;}
+  .title{font-weight:800;letter-spacing:-.02em;font-size:1.35rem;display:flex;gap:.5rem;align-items:center}
+  .spacer{flex:1}
+  .search{position:relative;max-width:520px;width:100%}
+  .search input{width:100%;padding:.65rem .8rem .65rem 2.2rem;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,0.85);outline:none}
+  .search input:focus{box-shadow:0 0 0 3px var(--ring)}
+  .search svg{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);opacity:.55}
 
-// --- Helper: localStorage state hook -------------------------------------------------
-function useLocalStorage(key, initial) {
-  const [value, setValue] = useState(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : initial;
-    } catch {
-      return initial;
-    }
+  .hero{display:grid;grid-template-columns:1.4fr .9fr;gap:1rem;align-items:stretch;margin:1rem 0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 6px 20px rgba(2,12,26,.07)}
+  .card .pad{padding:1rem}
+  .btn{appearance:none;border:1px solid var(--border);background:white;border-radius:12px;padding:.55rem .9rem;cursor:pointer}
+  .btn:hover{box-shadow:0 0 0 3px var(--ring)}
+  .btn.secondary{background:#f0f9ff}
+  .btn.ghost{background:transparent}
+
+  .section{margin:1.25rem 0}
+  .grid{display:grid;gap:12px}
+  @media(min-width:640px){.grid.cols-2{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:860px){.grid.cols-3{grid-template-columns:repeat(3,1fr)}.grid.cols-4{grid-template-columns:repeat(4,1fr)}.grid.cols-5{grid-template-columns:repeat(5,1fr)}}
+  .tile{display:block;text-align:left;padding:14px;border-radius:16px;background:var(--card);border:1px solid var(--border);transition:transform .15s ease, box-shadow .15s ease}
+  .tile:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(2,12,26,.10)}
+  .tile .row{display:flex;gap:10px;align-items:center}
+  .bubble{border:1px solid #bae6fd;background:#e0f2fe;color:#075985;padding:8px;border-radius:12px;display:inline-flex}
+  .muted{color:var(--muted);font-size:.8rem}
+
+  footer{border-top:1px solid var(--border);background:rgba(255,255,255,0.6)}
+  footer .pad{padding:12px;font-size:.8rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  footer a{color:inherit}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;display:none;z-index:50}
+  .modal.open{display:flex;align-items:center;justify-content:center;padding:1rem}
+  .modal .back{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+  .modal .win{position:relative;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:18px;max-width:900px;width:100%;max-height:90vh;display:flex;flex-direction:column}
+  .modal .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}
+  .modal .body{padding:12px 14px;overflow:auto}
+
+  /* Inputs */
+  .input, textarea, select{width:100%;padding:.55rem .7rem;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.9);outline:none}
+  .input:focus, textarea:focus, select:focus{box-shadow:0 0 0 3px var(--ring)}
+  textarea{min-height:160px}
+  table{width:100%;border-collapse:collapse;font-size:.95rem}
+  th,td{padding:.5rem;border-bottom:1px solid var(--border)}
+  tfoot td{font-weight:700}
+
+  /* Canvas sits behind everything */
+  #ocean{position:fixed;inset:0;z-index:-1;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="ocean" aria-hidden="true"></canvas>
+<div class="shell">
+  <header>
+    <div class="wrap hrow">
+      <div class="title">🐟 <span>PLFC Super Hub</span></div>
+      <div class="spacer"></div>
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" placeholder="Search tiles (e.g. Grants, Knot, Reef)">
+      </div>
+      <button class="btn ghost" onclick="alert('Settings coming soon')">Settings</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="card"><div class="pad">
+        <h1 style="margin:.2rem 0 0;line-height:1.2">Welcome to the Point Lookout Fishing Club 🎣</h1>
+        <p class="muted" style="margin:.4rem 0 1rem;max-width:60ch">A playful, linkable set of micro‑apps for members and committee. Start with the tiles below, and we’ll stitch them into the full Straddie Super‑App later.</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn" onclick="openModal('countdown')">Next Event Countdown</button>
+          <button class="btn secondary" onclick="alert('Open docs repo')">Docs</button>
+          <button class="btn" onclick="alert('Open GitHub org')">GitHub</button>
+        </div>
+      </div></div>
+      <div class="card"><div class="pad">
+        <div class="grid cols-2">
+          <div class="card" style="background:#ffffffb3"><div class="pad">
+            <div class="muted">Next Comp</div>
+            <div id="countdown" style="font-weight:800;font-size:1.8rem"></div>
+          </div></div>
+          <div class="card" style="background:#ffffffb3"><div class="pad">
+            <div class="muted">Balance (demo)</div>
+            <div id="balanceDemo" style="font-weight:800;font-size:1.8rem">$ 0.00</div>
+          </div></div>
+        </div>
+      </div></div>
+    </section>
+
+    <section class="section">
+      <h2 style="font-size:1rem;margin:.2rem 0 .5rem">Member Toys</h2>
+      <div id="tiles" class="grid cols-2 cols-3 cols-4"></div>
+
+      <h2 style="font-size:1rem;margin:1rem 0 .5rem">Committee Micro‑Apps</h2>
+      <div id="committee" class="grid cols-2 cols-3 cols-5"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap"><div class="pad">
+      <span>© <span id="year"></span> Point Lookout Fishing Club</span>
+      <span>•</span>
+      <a href="#" onclick="alert('Open Constitution');return false;">Constitution</a>
+      <span>•</span>
+      <a href="#" onclick="alert('Open Minutes');return false;">Minutes</a>
+      <span style="margin-left:auto">Made with 💙 on Straddie</span>
+    </div></div>
+  </footer>
+</div>
+
+<!-- Modals -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="back" onclick="closeModal()"></div>
+  <div class="win">
+    <div class="head">
+      <div id="modalTitle" style="font-weight:700">Modal</div>
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>
+    <div class="body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  // ------- WHY YOUR PREVIOUS TRY LOOKED LIKE GOBBLEDYGOOK ---------
+  // The first version I gave you was a React component (imports, JSX).
+  // GitHub Pages can't run JSX or imports by itself. This file is pure
+  // HTML + CSS + vanilla JS — drop it into a repo and it just works.
+
+  // ---------- UTILITIES ----------
+  const $ = s => document.querySelector(s);
+  const local = {
+    get:(k, d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
+    set:(k, v)=>{try{localStorage.setItem(k, JSON.stringify(v))}catch{}}
+  };
+
+  // ---------- COUNTDOWN ----------
+  const nextEvent = new Date(Date.now()+1000*60*60*24*35); // demo +35 days
+  function tickCountdown(){
+    const delta = Math.max(0, nextEvent.getTime() - Date.now());
+    const d = Math.floor(delta/86400000);
+    const h = Math.floor(delta/3600000)%24;
+    const m = Math.floor(delta/60000)%60;
+    const s = Math.floor(delta/1000)%60;
+    $('#countdown').textContent = `${d}d ${h}h ${m}m ${s}s`;
+  }
+  setInterval(tickCountdown, 1000); tickCountdown();
+  $('#year').textContent = new Date().getFullYear();
+
+  // ---------- TILES ----------
+  const memberTiles = [
+    {key:'leaderboard', label:'Leaderboard', tag:'Fun', action:()=>alert('Stub: /leaderboard')},
+    {key:'bite', label:'Bite Times', tag:'Fun', action:()=>alert('Stub: /bite-times')},
+    {key:'lure', label:'Lure Picker', tag:'Fun', action:()=>alert('Stub: /lure-picker')},
+    {key:'reefmap', label:'Reef Map', tag:'Conservation', action:()=>alert('Stub: /reef-map')},
+    {key:'knots', label:'Knot Tutor', tag:'Learn', action:()=>alert('Stub: /knots')},
+    {key:'eco', label:'Eco Tip', tag:'Conservation', action:()=>alert('Stub: /eco-tip')},
+    {key:'memes', label:'Meme Maker', tag:'Fun', action:()=>alert('Stub: /meme')},
+    {key:'countdown', label:'Event Countdown', tag:'Events', action:()=>openModal('countdown')},
+  ];
+  const committeeTiles = [
+    {key:'treasury', label:'Treasury', action:()=>openModal('treasury')},
+    {key:'minutes', label:'Minutes', action:()=>openModal('minutes')},
+    {key:'tasks', label:'Tasks', action:()=>openModal('tasks')},
+    {key:'grants', label:'Grants', action:()=>openModal('grants')},
+    {key:'comms', label:'Comms', action:()=>openModal('comms')},
+  ];
+
+  function renderTiles(list, target){
+    const el = $(target);
+    el.innerHTML = '';
+    list.forEach(t=>{
+      const div = document.createElement('button');
+      div.className = 'tile';
+      div.onclick = t.action;
+      div.innerHTML = `<div class="row"><span class="bubble">🐟</span><div><div style="font-weight:700">${t.label}</div><div class="muted">${t.tag||'Admin'}</div></div></div>`;
+      el.appendChild(div);
+    });
+  }
+  renderTiles(memberTiles,'#tiles');
+  renderTiles(committeeTiles,'#committee');
+
+  // ---------- SEARCH FILTER ----------
+  $('#search').addEventListener('input', e=>{
+    const q = e.target.value.toLowerCase();
+    const filtered = memberTiles.filter(t=>t.label.toLowerCase().includes(q));
+    renderTiles(filtered,'#tiles');
   });
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {}
-  }, [key, value]);
-  return [value, setValue];
-}
 
-// --- Background Fish Canvas ---------------------------------------------------------
-function FishBackground() {
-  const canvasRef = useRef(null);
-  const pointer = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const fishies = useRef([]);
-  const bigFish = useRef(null);
-  const DPR = typeof window !== "undefined" ? Math.max(1, Math.min(2, window.devicePixelRatio || 1)) : 1;
+  // ---------- MODAL ----------
+  function openModal(key){
+    const t = {
+      treasury: ()=>TreasuryApp(),
+      minutes: ()=>MinutesApp(),
+      tasks: ()=>TasksApp(),
+      grants: ()=>GrantsApp(),
+      comms: ()=>CommsApp(),
+      countdown: ()=>CountdownView(),
+    }[key];
+    const {title, body} = t? t(): {title:'Oops', body:document.createTextNode('Unknown view')};
+    $('#modalTitle').textContent = title;
+    const mb = $('#modalBody'); mb.innerHTML=''; mb.appendChild(body);
+    $('#modal').classList.add('open');
+    $('#modal').setAttribute('aria-hidden','false');
+  }
+  function closeModal(){
+    $('#modal').classList.remove('open');
+    $('#modal').setAttribute('aria-hidden','true');
+  }
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const resize = () => {
-      canvas.width = window.innerWidth * DPR;
-      canvas.height = window.innerHeight * DPR;
-      ctx.scale(DPR, DPR);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Create small fish
-    const count = 16;
-    fishies.current = Array.from({ length: count }).map((_, i) => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 1.2,
-      vy: (Math.random() - 0.5) * 1.2,
-      size: 6 + Math.random() * 6,
-      hue: 180 + Math.random() * 100,
-      turn: 0.05 + Math.random() * 0.05,
-      speed: 0.6 + Math.random() * 0.8,
-    }));
-
-    // Big boss fish
-    bigFish.current = {
-      x: window.innerWidth * 0.8,
-      y: window.innerHeight * 0.2,
-      vx: 0,
-      vy: 0,
-      size: 30,
-      hue: 15,
-      turn: 0.035,
-      speed: 1.4,
-    };
-
-    let raf;
-    const loop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Soft ocean gradient
-      const g = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
-      g.addColorStop(0, "rgba(0,40,80,0.18)");
-      g.addColorStop(1, "rgba(0,100,120,0.10)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-
-      // Draw & update small fish
-      fishies.current.forEach(f => {
-        const dx = pointer.current.x - f.x;
-        const dy = pointer.current.y - f.y;
-        const a = Math.atan2(dy, dx);
-        f.vx = f.vx * (1 - f.turn) + Math.cos(a) * f.speed * f.turn * 10;
-        f.vy = f.vy * (1 - f.turn) + Math.sin(a) * f.speed * f.turn * 10;
-        f.x += f.vx;
-        f.y += f.vy;
-
-        // Wrap around edges
-        if (f.x < -20) f.x = window.innerWidth + 20;
-        if (f.x > window.innerWidth + 20) f.x = -20;
-        if (f.y < -20) f.y = window.innerHeight + 20;
-        if (f.y > window.innerHeight + 20) f.y = -20;
-
-        // Render fish as little triangles
-        const angle = Math.atan2(f.vy, f.vx);
-        ctx.save();
-        ctx.translate(f.x, f.y);
-        ctx.rotate(angle);
-        ctx.fillStyle = `hsla(${f.hue},70%,60%,0.9)`;
-        ctx.beginPath();
-        ctx.moveTo(-f.size * 0.6, -f.size * 0.5);
-        ctx.lineTo(-f.size * 0.6, f.size * 0.5);
-        ctx.lineTo(f.size, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+  // ---------- MICRO‑APPS (LocalStorage, no libs) ----------
+  function TreasuryApp(){
+    const rows = local.get('plfc_treasury_rows', []);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="grid cols-2" style="gap:8px;margin-bottom:8px">
+        <input id="t_date" class="input" placeholder="Date"/>
+        <input id="t_item" class="input" placeholder="Item"/>
+        <input id="t_amount" class="input" type="number" step="0.01" placeholder="Amount"/>
+        <select id="t_type" class="input"><option value="income">Income</option><option value="expense">Expense</option></select>
+        <button class="btn" id="t_add">Add</button>
+      </div>
+      <div class="card"><div class="pad"><table id="t_tab"><thead><tr><th>Date</th><th>Item</th><th style="text-align:right">Amount</th><th>Type</th><th></th></tr></thead><tbody></tbody><tfoot><tr><td colspan="2">Balance</td><td id="t_total" style="text-align:right"></td><td colspan="2"></td></tr></tfoot></table></div></div>
+      <p class="muted">Stored in your browser. CSV export coming soon.</p>`;
+    const tbody = wrap.querySelector('tbody');
+    function draw(){
+      tbody.innerHTML='';
+      let total = 0;
+      rows.forEach((r,i)=>{
+        const tr = document.createElement('tr');
+        total += (r.type==='income'?1:-1) * Number(r.amount||0);
+        tr.innerHTML = `<td>${r.date||''}</td><td>${r.item||''}</td><td style="text-align:right">${Number(r.amount||0).toFixed(2)}</td><td style="text-align:center">${r.type}</td><td style="text-align:center"><button class="btn" data-i="${i}">Del</button></td>`;
+        tbody.appendChild(tr);
       });
-
-      // Big Fish chases the pointer too (slower turning, bigger inertia)
-      const B = bigFish.current;
-      const bdx = pointer.current.x - B.x;
-      const bdy = pointer.current.y - B.y;
-      const ba = Math.atan2(bdy, bdx);
-      B.vx = B.vx * (1 - B.turn) + Math.cos(ba) * B.speed * 1.2;
-      B.vy = B.vy * (1 - B.turn) + Math.sin(ba) * B.speed * 1.2;
-      B.x += B.vx;
-      B.y += B.vy;
-
-      // Render Big Fish
-      ctx.save();
-      ctx.translate(B.x, B.y);
-      ctx.rotate(ba);
-      ctx.fillStyle = `hsla(${B.hue},80%,55%,0.9)`;
-      ctx.beginPath();
-      // body
-      ctx.ellipse(0, 0, B.size * 1.2, B.size * 0.7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // tail
-      ctx.beginPath();
-      ctx.moveTo(-B.size * 1.2, 0);
-      ctx.lineTo(-B.size * 1.8, B.size * 0.5);
-      ctx.lineTo(-B.size * 1.8, -B.size * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      // eye
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.arc(B.size * 0.5, -B.size * 0.15, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#222";
-      ctx.beginPath();
-      ctx.arc(B.size * 0.55, -B.size * 0.15, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      raf = requestAnimationFrame(loop);
+      wrap.querySelector('#t_total').textContent = total.toFixed(2);
+      tbody.querySelectorAll('button[data-i]').forEach(b=>b.onclick = ()=>{rows.splice(Number(b.dataset.i),1); local.set('plfc_treasury_rows', rows); draw();});
+      // Demo: pump the hero balance
+      document.getElementById('balanceDemo').textContent = `$ ${Number(total).toFixed(2)}`;
+    }
+    draw();
+    wrap.querySelector('#t_add').onclick = ()=>{
+      const r = { date:wrap.querySelector('#t_date').value, item:wrap.querySelector('#t_item').value, amount:wrap.querySelector('#t_amount').value, type:wrap.querySelector('#t_type').value };
+      if(!r.item || !r.amount) return;
+      rows.push(r); local.set('plfc_treasury_rows', rows); draw();
+      wrap.querySelectorAll('#t_date,#t_item,#t_amount').forEach(i=>i.value='');
     };
+    return { title:'Treasury – Simple Ledger', body:wrap };
+  }
 
-    // Pointer listeners (mouse + touch)
-    const onMove = e => {
-      pointer.current.x = e.clientX;
-      pointer.current.y = e.clientY;
+  function MinutesApp(){
+    const wrap = document.createElement('div');
+    const val = local.get('plfc_minutes_text','');
+    wrap.innerHTML = `<textarea id="m_area" class="input" placeholder="Type minutes here...">${val.replace(/</g,'&lt;')}</textarea>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem"><button class='btn' id='m_copy'>Copy</button><button class='btn' id='m_dl'>Download .txt</button></div>
+    <p class="muted">Tip: paste agenda items here before the meeting, then fill decisions and action items live.</p>`;
+    const area = wrap.querySelector('#m_area');
+    area.addEventListener('input', ()=>local.set('plfc_minutes_text', area.value));
+    wrap.querySelector('#m_copy').onclick = ()=>navigator.clipboard.writeText(area.value||'');
+    wrap.querySelector('#m_dl').onclick = ()=>{
+      const blob = new Blob([area.value||''], {type:'text/plain'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `PLFC-Minutes-${new Date().toISOString().slice(0,10)}.txt`; a.click();
     };
-    const onTouch = e => {
-      if (e.touches && e.touches[0]) {
-        pointer.current.x = e.touches[0].clientX;
-        pointer.current.y = e.touches[0].clientY;
-      }
+    return { title:'Minutes – Quick Capture', body:wrap };
+  }
+
+  function TasksApp(){
+    const wrap = document.createElement('div');
+    const tasks = local.get('plfc_tasks', []);
+    wrap.innerHTML = `<div style="display:flex;gap:.5rem"><input id='t_title' class='input' placeholder='Add a task (e.g. Book Bowls Club)'/><button class='btn' id='t_add'>Add</button></div><ul id='t_list' style='list-style:none;padding-left:0;margin:.6rem 0;display:grid;gap:.4rem'></ul>`;
+    const list = wrap.querySelector('#t_list');
+    function draw(){
+      list.innerHTML='';
+      tasks.forEach((t,i)=>{
+        const li = document.createElement('li');
+        li.className='card';
+        li.innerHTML = `<div class='pad' style='display:flex;align-items:center;gap:.6rem'><input type='checkbox' ${t.done?'checked':''} data-i='${i}'/><span style='flex:1;${t.done?'text-decoration:line-through;opacity:.6':''}'>${t.title}</span><button class='btn' data-del='${i}'>Del</button></div>`;
+        list.appendChild(li);
+      });
+      list.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>{const i=Number(c.dataset.i);tasks[i].done=c.checked;local.set('plfc_tasks',tasks);draw();});
+      list.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{const i=Number(b.dataset.del);tasks.splice(i,1);local.set('plfc_tasks',tasks);draw();});
+    }
+    draw();
+    wrap.querySelector('#t_add').onclick = ()=>{const t = wrap.querySelector('#t_title'); if(!t.value.trim()) return; tasks.push({title:t.value,done:false}); local.set('plfc_tasks',tasks); t.value=''; draw();};
+    return { title:'Tasks – To‑Do Tracker', body:wrap };
+  }
+
+  function GrantsApp(){
+    const grants = local.get('plfc_grants', [
+      { name:'Qld Community Fishing Grants', status:'Idea', due:'', owner:'' },
+      { name:'GCBF (Round 124)', status:'Drafting', due:'2025-07-18', owner:'Richard' },
+    ]);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class='grid cols-2' style='gap:8px;margin-bottom:8px'>
+      <input id='g_name' class='input' placeholder='Grant name'/>
+      <select id='g_status' class='input'><option>Idea</option><option>Drafting</option><option>Submitted</option><option>Awarded</option><option>Not Awarded</option></select>
+      <input id='g_due' type='date' class='input'/>
+      <input id='g_owner' class='input' placeholder='Owner'/>
+      <button class='btn' id='g_add'>Add</button>
+    </div>
+    <div id='g_cards' class='grid cols-2 cols-3' style='gap:10px'></div>`;
+    const box = wrap.querySelector('#g_cards');
+    function draw(){
+      box.innerHTML='';
+      grants.forEach((g,i)=>{
+        const c = document.createElement('div'); c.className='card';
+        c.innerHTML = `<div class='pad'><div style='font-weight:700'>${g.name}</div><div class='muted'>Status: ${g.status}</div><div class='muted'>Due: ${g.due||'—'}</div><div class='muted'>Owner: ${g.owner||'—'}</div><div style='margin-top:.5rem'><button class='btn' data-del='${i}'>Remove</button></div></div>`;
+        box.appendChild(c);
+      });
+      box.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{grants.splice(Number(b.dataset.del),1); local.set('plfc_grants',grants); draw();});
+    }
+    draw();
+    wrap.querySelector('#g_add').onclick=()=>{
+      const n = wrap.querySelector('#g_name').value.trim(); if(!n) return;
+      grants.push({ name:n, status:wrap.querySelector('#g_status').value, due:wrap.querySelector('#g_due').value, owner:wrap.querySelector('#g_owner').value});
+      local.set('plfc_grants',grants); draw();
+      wrap.querySelectorAll('#g_name,#g_due,#g_owner').forEach(i=>i.value='');
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchstart", onTouch, { passive: true });
-    window.addEventListener("touchmove", onTouch, { passive: true });
+    return { title:'Grants – Pipeline Overview', body:wrap };
+  }
 
-    loop();
+  function CommsApp(){
+    const list = local.get('plfc_comms_list', [ {name:'Andy', email:'andy@example.com'}, {name:'Sami', email:'sami@example.com'} ]);
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<textarea id='c_msg' class='input'>Kia ora crew! Next comp on Sat 14 Sep – sign-on 6am at Bowls Club. Tight lines! 🎣</textarea>
+      <div style='display:flex;gap:.5rem;margin:.5rem 0'><button class='btn' id='c_copym'>Copy Message</button><button class='btn' id='c_copye'>Copy All Emails</button><button class='btn' id='c_add'>Add Recipient</button></div>
+      <ul id='c_list' style='list-style:none;padding-left:0;margin:0;display:grid;gap:.4rem'></ul>
+      <p class='muted'>Pro tip: paste the message into Gmail BCC for a quick bulk send. SMS gateway can be wired later.</p>`;
+    const ul = wrap.querySelector('#c_list');
+    function draw(){ ul.innerHTML=''; list.forEach((p,i)=>{ const li=document.createElement('li'); li.className='card'; li.innerHTML=`<div class='pad'><div style='font-weight:700'>${p.name||'(no name)'}</div><div class='muted'>${p.email}</div><div style='margin-top:.4rem'><button class='btn' data-del='${i}'>Remove</button></div></div>`; ul.appendChild(li); }); ul.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{list.splice(Number(b.dataset.del),1); local.set('plfc_comms_list',list); draw();}); }
+    draw();
+    wrap.querySelector('#c_copym').onclick=()=>navigator.clipboard.writeText(wrap.querySelector('#c_msg').value||'');
+    wrap.querySelector('#c_copye').onclick=()=>navigator.clipboard.writeText(list.map(x=>x.email).join(', '));
+    wrap.querySelector('#c_add').onclick=()=>{const name=prompt('Name?'); const email=prompt('Email?'); if(!email) return; list.push({name:name||'',email}); local.set('plfc_comms_list',list); draw();};
+    return { title:'Comms – Message Prep & Recipients', body:wrap };
+  }
 
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchstart", onTouch);
-      window.removeEventListener("touchmove", onTouch);
-    };
-  }, [DPR]);
+  function CountdownView(){
+    const d = document.createElement('div');
+    d.innerHTML = `<div style='display:flex;align-items:center;gap:12px'><div id='cd_big' style='font-weight:800;font-size:2rem'></div><div class='muted'>Set your event date directly in code or wire to a config JSON later.</div></div>`;
+    const upd = ()=>{const delta = Math.max(0, nextEvent.getTime() - Date.now());
+      const D=Math.floor(delta/86400000), H=Math.floor(delta/3600000)%24, M=Math.floor(delta/60000)%60, S=Math.floor(delta/1000)%60; d.querySelector('#cd_big').textContent=`${D}d ${H}h ${M}m ${S}s`;};
+    setInterval(upd,1000); upd();
+    return { title:'Event Countdown', body:d };
+  }
 
-  // Fun fish cursor (SVG data URL)
-  useEffect(() => {
-    const fishSVG = encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>
-        <g fill='none' stroke='none'>
-          <path d='M4 16 L10 10 L18 12 L24 8 L22 16 L24 24 L18 20 L10 22 Z' fill='#00bcd4' opacity='0.9'/>
-          <circle cx='18' cy='13' r='1.8' fill='#fff'/>
-          <circle cx='18.5' cy='13' r='0.9' fill='#222'/>
-        </g>
-      </svg>`
-    );
-    document.documentElement.style.cursor = `url("data:image/svg+xml,${fishSVG}") 8 8, auto`;
-    return () => {
-      document.documentElement.style.cursor = "auto";
-    };
-  }, []);
+  // ---------- OCEAN CANVAS: fish chase cursor/touch ----------
+  const canvas = document.getElementById('ocean');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio||1));
+  let W = innerWidth, H = innerHeight;
+  function size(){ W=innerWidth; H=innerHeight; canvas.width=W*DPR; canvas.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);}
+  size(); addEventListener('resize', size);
+  const pointer = { x: W/2, y: H/2 };
+  addEventListener('mousemove', e=>{ pointer.x=e.clientX; pointer.y=e.clientY; });
+  addEventListener('touchstart', e=>{ if(e.touches&&e.touches[0]){pointer.x=e.touches[0].clientX; pointer.y=e.touches[0].clientY;} }, {passive:true});
+  addEventListener('touchmove', e=>{ if(e.touches&&e.touches[0]){pointer.x=e.touches[0].clientX; pointer.y=e.touches[0].clientY;} }, {passive:true});
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 -z-10 pointer-events-none select-none"
-      aria-hidden="true"
-    />
-  );
-}
+  const fishies = Array.from({length:16}).map(()=>({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    vx:(Math.random()-0.5)*1.2,
+    vy:(Math.random()-0.5)*1.2,
+    size: 6+Math.random()*6,
+    hue: 180+Math.random()*100,
+    turn: 0.05+Math.random()*0.05,
+    speed: 0.6+Math.random()*0.8,
+  }));
+  const big = { x:W*0.8, y:H*0.2, vx:0, vy:0, size:30, hue:15, turn:0.035, speed:1.4 };
 
-// --- Modal Shell -------------------------------------------------------------------
-function Modal({ open, onClose, title, children }) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-          <motion.div
-            className="relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white/90 backdrop-blur-lg shadow-2xl"
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 20, opacity: 0 }}
-          >
-            <div className="flex items-center justify-between border-b border-black/5 p-4 md:p-5">
-              <h3 className="text-lg md:text-xl font-semibold">{title}</h3>
-              <Button variant="ghost" onClick={onClose}>Close</Button>
-            </div>
-            <div className="p-4 md:p-6 overflow-y-auto">{children}</div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// --- Micro‑Apps (lightweight, offline-first via localStorage) ----------------------
-function TreasuryApp() {
-  const [rows, setRows] = useLocalStorage("plfc_treasury_rows", []);
-  const [form, setForm] = useState({ date: "", item: "", amount: "", type: "income" });
-  const total = rows.reduce((a, r) => a + (r.type === "income" ? Number(r.amount) : -Number(r.amount)), 0);
-  const add = () => {
-    if (!form.item || !form.amount) return;
-    setRows([...rows, { ...form, id: crypto.randomUUID() }]);
-    setForm({ date: "", item: "", amount: "", type: "income" });
-  };
-  const remove = id => setRows(rows.filter(r => r.id !== id));
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-        <input className="input" placeholder="Date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} />
-        <input className="input col-span-2" placeholder="Item" value={form.item} onChange={e=>setForm({...form,item:e.target.value})} />
-        <input className="input" placeholder="Amount" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} />
-        <select className="input" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-        <Button onClick={add}>Add</Button>
-      </div>
-      <div className="rounded-xl border border-black/10 overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-black/5">
-            <tr>
-              <th className="p-2 text-left">Date</th>
-              <th className="p-2 text-left">Item</th>
-              <th className="p-2 text-right">Amount</th>
-              <th className="p-2">Type</th>
-              <th className="p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id} className="odd:bg-white even:bg-black/2">
-                <td className="p-2">{r.date}</td>
-                <td className="p-2">{r.item}</td>
-                <td className="p-2 text-right">{Number(r.amount).toFixed(2)}</td>
-                <td className="p-2 text-center">{r.type}</td>
-                <td className="p-2 text-center"><Button size="sm" variant="secondary" onClick={()=>remove(r.id)}>Del</Button></td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-black/5">
-              <td className="p-2 font-semibold" colSpan={2}>Balance</td>
-              <td className={`p-2 text-right font-semibold ${total>=0?"text-emerald-700":"text-rose-700"}`}>{total.toFixed(2)}</td>
-              <td colSpan={2}></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-      <p className="text-xs text-black/60">Data is stored in your browser only (localStorage). Export to CSV coming soon.</p>
-    </div>
-  );
-}
-
-function MinutesApp() {
-  const [text, setText] = useLocalStorage("plfc_minutes_text", "");
-  const download = () => {
-    const blob = new Blob([text], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `PLFC-Minutes-${new Date().toISOString().slice(0,10)}.txt`;
-    a.click();
-  };
-  return (
-    <div className="space-y-3">
-      <textarea className="input h-64" placeholder="Type minutes here..." value={text} onChange={e=>setText(e.target.value)} />
-      <div className="flex gap-2">
-        <Button onClick={download}>Download .txt</Button>
-        <Button variant="secondary" onClick={()=>navigator.clipboard.writeText(text)}>Copy</Button>
-      </div>
-      <p className="text-xs text-black/60">Tip: paste agenda items here before the meeting, then fill decisions and action items live.</p>
-    </div>
-  );
-}
-
-function TasksApp() {
-  const [tasks, setTasks] = useLocalStorage("plfc_tasks", []);
-  const [title, setTitle] = useState("");
-  const add = () => {
-    if (!title.trim()) return;
-    setTasks([...tasks, { id: crypto.randomUUID(), title, done: false }]);
-    setTitle("");
-  };
-  const toggle = id => setTasks(tasks.map(t => t.id===id?{...t,done:!t.done}:t));
-  const remove = id => setTasks(tasks.filter(t=>t.id!==id));
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <input className="input flex-1" placeholder="Add a task (e.g. Book Bowls Club)" value={title} onChange={e=>setTitle(e.target.value)} />
-        <Button onClick={add}>Add</Button>
-      </div>
-      <ul className="space-y-2">
-        {tasks.map(t => (
-          <li key={t.id} className="flex items-center gap-3 rounded-xl border border-black/10 p-2">
-            <input type="checkbox" checked={t.done} onChange={()=>toggle(t.id)} />
-            <span className={`${t.done?"line-through text-black/50":""} flex-1`}>{t.title}</span>
-            <Button size="sm" variant="secondary" onClick={()=>remove(t.id)}>Del</Button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function GrantsApp() {
-  const [grants, setGrants] = useLocalStorage("plfc_grants", [
-    { id: crypto.randomUUID(), name: "Qld Community Fishing Grants", status: "Idea", due: "", owner: "" },
-    { id: crypto.randomUUID(), name: "GCBF (Round 124)", status: "Drafting", due: "2025-07-18", owner: "Richard" },
-  ]);
-  const [form, setForm] = useState({ name: "", status: "Idea", due: "", owner: "" });
-  const add = () => {
-    if (!form.name) return;
-    setGrants([...grants, { ...form, id: crypto.randomUUID() }]);
-    setForm({ name: "", status: "Idea", due: "", owner: "" });
-  };
-  const statuses = ["Idea","Drafting","Submitted","Awarded","Not Awarded"];
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-        <input className="input col-span-2" placeholder="Grant name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
-        <select className="input" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
-          {statuses.map(s=> <option key={s}>{s}</option>)}
-        </select>
-        <input className="input" type="date" value={form.due} onChange={e=>setForm({...form,due:e.target.value})} />
-        <input className="input" placeholder="Owner" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})} />
-        <Button onClick={add}>Add</Button>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {grants.map(g => (
-          <Card key={g.id} className="rounded-2xl shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{g.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm space-y-1">
-              <p><span className="font-medium">Status:</span> {g.status}</p>
-              <p><span className="font-medium">Due:</span> {g.due || "—"}</p>
-              <p><span className="font-medium">Owner:</span> {g.owner || "—"}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CommsApp() {
-  const [msg, setMsg] = useState("Kia ora crew! Next comp on Sat 14 Sep – sign-on 6am at Bowls Club. Tight lines! 🎣");
-  const [list, setList] = useLocalStorage("plfc_comms_list", [
-    { id: crypto.randomUUID(), name: "Andy", email: "andy@example.com" },
-    { id: crypto.randomUUID(), name: "Sami", email: "sami@example.com" },
-  ]);
-  const add = () => {
-    const name = prompt("Name?");
-    const email = prompt("Email?");
-    if (!email) return;
-    setList([...list, { id: crypto.randomUUID(), name: name || "", email }]);
-  };
-  const copyEmails = () => {
-    navigator.clipboard.writeText(list.map(x=>x.email).join(", "));
-  };
-  return (
-    <div className="space-y-3">
-      <textarea className="input h-40" value={msg} onChange={e=>setMsg(e.target.value)} />
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={()=>navigator.clipboard.writeText(msg)}>Copy Message</Button>
-        <Button variant="secondary" onClick={copyEmails}>Copy All Emails</Button>
-        <Button variant="outline" onClick={add}>Add Recipient</Button>
-      </div>
-      <ul className="grid sm:grid-cols-2 gap-2">
-        {list.map(p => (
-          <li key={p.id} className="rounded-xl border border-black/10 p-2 text-sm">
-            <div className="font-medium">{p.name || "(no name)"}</div>
-            <div className="text-black/70">{p.email}</div>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-black/60">Pro tip: paste the message into Gmail BCC for a quick bulk send. SMS gateway can be wired later.</p>
-    </div>
-  );
-}
-
-// --- Toy micro-widgets to show in hub (examples) -----------------------------------
-function CountdownWidget({ dateString }) {
-  const target = useMemo(() => new Date(dateString).getTime(), [dateString]);
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const i = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(i);
-  }, []);
-  const delta = Math.max(0, target - now);
-  const d = Math.floor(delta / (1000 * 60 * 60 * 24));
-  const h = Math.floor((delta / (1000 * 60 * 60)) % 24);
-  const m = Math.floor((delta / (1000 * 60)) % 60);
-  const s = Math.floor((delta / 1000) % 60);
-  return (
-    <div className="text-2xl font-bold tabular-nums">{d}d {h}h {m}m {s}s</div>
-  );
-}
-
-// --- Main Hub ----------------------------------------------------------------------
-export default function PLFCSuperHub() {
-  const [query, setQuery] = useState("");
-  const [modal, setModal] = useState(null); // string key
-
-  const tiles = [
-    { key: "leaderboard", label: "Leaderboard", icon: <Trophy/>, tag: "Fun", action: () => alert("Stub: link to /leaderboard") },
-    { key: "bite", label: "Bite Times", icon: <Fish/>, tag: "Fun", action: () => alert("Stub: link to /bite-times") },
-    { key: "lure", label: "Lure Picker", icon: <Sparkles/>, tag: "Fun", action: () => alert("Stub: link to /lure-picker") },
-    { key: "reefmap", label: "Reef Map", icon: <Map/>, tag: "Conservation", action: () => alert("Stub: link to /reef-map") },
-    { key: "knots", label: "Knot Tutor", icon: <Anchor/>, tag: "Learn", action: () => alert("Stub: link to /knots") },
-    { key: "eco", label: "Eco Tip", icon: <LeafIcon/>, tag: "Conservation", action: () => alert("Stub: link to /eco-tip") },
-    { key: "memes", label: "Meme Maker", icon: <MessageSquare/>, tag: "Fun", action: () => alert("Stub: link to /meme") },
-    { key: "countdown", label: "Event Countdown", icon: <Calendar/>, tag: "Events", action: () => setModal("countdown") },
-  ];
-
-  const committee = [
-    { key: "treasury", label: "Treasury", icon: <Coins/>, action: () => setModal("treasury") },
-    { key: "minutes", label: "Minutes", icon: <FileText/>, action: () => setModal("minutes") },
-    { key: "tasks", label: "Tasks", icon: <ListChecks/>, action: () => setModal("tasks") },
-    { key: "grants", label: "Grants", icon: <FileCheck2/>, action: () => setModal("grants") },
-    { key: "comms", label: "Comms", icon: <Mail/>, action: () => setModal("comms") },
-  ];
-
-  const filteredTiles = tiles.filter(t => t.label.toLowerCase().includes(query.toLowerCase()));
-
-  return (
-    <div className="min-h-screen text-slate-900">
-      <FishBackground />
-
-      {/* Header */}
-      <header className="sticky top-0 z-10 backdrop-blur-md bg-white/50 border-b border-black/5">
-        <div className="mx-auto max-w-7xl p-3 md:p-4 flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🐟</span>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">PLFC Super Hub</h1>
-          </div>
-          <div className="ml-auto relative w-full max-w-lg">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50" />
-            <input
-              className="input pl-10"
-              placeholder="Search tiles (e.g. Grants, Knot, Reef)"
-              value={query}
-              onChange={e=>setQuery(e.target.value)}
-            />
-          </div>
-          <Button variant="outline" className="hidden md:inline-flex" onClick={()=>alert("Settings coming soon")}> <Settings className="mr-2 h-4 w-4"/> Settings</Button>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="mx-auto max-w-7xl px-3 md:px-4 py-6 md:py-10">
-        <div className="grid md:grid-cols-3 gap-4 items-center">
-          <div className="md:col-span-2">
-            <h2 className="text-2xl md:text-4xl font-extrabold leading-tight">Welcome to the Point Lookout Fishing Club 🎣</h2>
-            <p className="mt-2 text-black/70 max-w-2xl">A playful, linkable set of micro‑apps for members and committee. Start with the tiles below, and we’ll stitch them into the full Straddie Super‑App later.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button onClick={()=>setModal("countdown")}>Next Event Countdown</Button>
-              <Button variant="secondary" onClick={()=>alert("Open docs repo")}>Docs</Button>
-              <Button variant="outline" onClick={()=>alert("Open GitHub org")}>GitHub</Button>
-            </div>
-          </div>
-          <Card className="rounded-2xl shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Quick Glance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-xl bg-white/70 p-3 shadow-inner">
-                  <div className="text-black/60">Next Comp</div>
-                  <CountdownWidget dateString={new Date(Date.now()+1000*60*60*24*35).toISOString()} />
-                </div>
-                <div className="rounded-xl bg-white/70 p-3 shadow-inner">
-                  <div className="text-black/60">Balance (demo)</div>
-                  <div className="text-2xl font-bold">$ 0.00</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Tiles */}
-      <section className="mx-auto max-w-7xl px-3 md:px-4 pb-10">
-        <h3 className="text-lg font-semibold mb-3">Member Toys</h3>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredTiles.map(t => (
-            <motion.button
-              key={t.key}
-              onClick={t.action}
-              whileHover={{ y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              className="rounded-2xl bg-white/80 backdrop-blur shadow hover:shadow-lg border border-black/5 p-4 text-left group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl p-2 bg-sky-50 border border-sky-100 text-sky-700">{t.icon}</div>
-                <div>
-                  <div className="font-semibold tracking-tight">{t.label}</div>
-                  <div className="text-xs text-black/60">{t.tag}</div>
-                </div>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-
-        <h3 className="text-lg font-semibold mt-8 mb-3">Committee Micro‑Apps</h3>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {committee.map(c => (
-            <motion.button
-              key={c.key}
-              onClick={c.action}
-              whileHover={{ y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              className="rounded-2xl bg-white/90 backdrop-blur shadow hover:shadow-lg border border-black/5 p-4 text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl p-2 bg-emerald-50 border border-emerald-100 text-emerald-700">{c.icon}</div>
-                <div className="font-semibold tracking-tight">{c.label}</div>
-              </div>
-              <div className="mt-2 text-xs text-black/60">Local‑only data, export‑ready.</div>
-            </motion.button>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-black/5 bg-white/60 backdrop-blur">
-        <div className="mx-auto max-w-7xl p-4 text-xs text-black/60 flex flex-wrap items-center gap-3">
-          <span>© {new Date().getFullYear()} Point Lookout Fishing Club</span>
-          <span className="hidden sm:inline">•</span>
-          <a className="underline underline-offset-4" href="#" onClick={(e)=>{e.preventDefault(); alert('Open Constitution')}}>Constitution</a>
-          <span className="hidden sm:inline">•</span>
-          <a className="underline underline-offset-4" href="#" onClick={(e)=>{e.preventDefault(); alert('Open Minutes')}}>Minutes</a>
-          <span className="ml-auto">Made with 💙 on Straddie</span>
-        </div>
-      </footer>
-
-      {/* Modals */}
-      <Modal open={modal==="treasury"} onClose={()=>setModal(null)} title="Treasury – Simple Ledger">
-        <TreasuryApp />
-      </Modal>
-      <Modal open={modal==="minutes"} onClose={()=>setModal(null)} title="Minutes – Quick Capture">
-        <MinutesApp />
-      </Modal>
-      <Modal open={modal==="tasks"} onClose={()=>setModal(null)} title="Tasks – To‑Do Tracker">
-        <TasksApp />
-      </Modal>
-      <Modal open={modal==="grants"} onClose={()=>setModal(null)} title="Grants – Pipeline Overview">
-        <GrantsApp />
-      </Modal>
-      <Modal open={modal==="comms"} onClose={()=>setModal(null)} title="Comms – Message Prep & Recipients">
-        <CommsApp />
-      </Modal>
-      <Modal open={modal==="countdown"} onClose={()=>setModal(null)} title="Event Countdown">
-        <div className="flex items-center gap-6">
-          <CountdownWidget dateString={new Date(Date.now()+1000*60*60*24*35).toISOString()} />
-          <div className="text-sm text-black/70">Set your event date directly in code or wire to a config JSON later.</div>
-        </div>
-      </Modal>
-
-      {/* Tiny utility styles */}
-      <style>{`
-        .input { @apply w-full rounded-xl border border-black/10 bg-white/80 backdrop-blur px-3 py-2 outline-none focus:ring-2 focus:ring-sky-300; }
-      `}</style>
-    </div>
-  );
-}
-
-// Simple Leaf icon fallback (since we didn't import from lucide)
-function LeafIcon(props){
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M11 3C7 3 3 7 3 11c0 4 3 7 7 7 7 0 11-8 11-15 0 0-8 0-10 0"/>
-    </svg>
-  );
-}
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(0,40,80,0.18)'); g.addColorStop(1,'rgba(0,100,120,0.10)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    fishies.forEach(f=>{
+      const dx=pointer.x-f.x, dy=pointer.y-f.y, a=Math.atan2(dy,dx);
+      f.vx = f.vx*(1-f.turn) + Math.cos(a)*f.speed*f.turn*10;
+      f.vy = f.vy*(1-f.turn) + Math.sin(a)*f.speed*f.turn*10;
+      f.x += f.vx; f.y += f.vy;
+      if(f.x<-20)f.x=W+20; if(f.x>W+20)f.x=-20; if(f.y<-20)f.y=H+20; if(f.y>H+20)f.y=-20;
+      const ang=Math.atan2(f.vy,f.vx);
+      ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(ang); ctx.fillStyle=`hsla(${f.hue},70%,60%,0.9)`; ctx.beginPath(); ctx.moveTo(-f.size*.6,-f.size*.5); ctx.lineTo(-f.size*.6,f.size*.5); ctx.lineTo(f.size,0); ctx.closePath(); ctx.fill(); ctx.restore();
+    });
+    const bdx=pointer.x-big.x, bdy=pointer.y-big.y, ba=Math.atan2(bdy,bdx);
+    big.vx = big.vx*(1-big.turn) + Math.cos(ba)*big.speed*1.2;
+    big.vy = big.vy*(1-big.turn) + Math.sin(ba)*big.speed*1.2; big.x+=big.vx; big.y+=big.vy;
+    ctx.save(); ctx.translate(big.x,big.y); ctx.rotate(ba); ctx.fillStyle=`hsla(${big.hue},80%,55%,0.9)`; ctx.beginPath(); ctx.ellipse(0,0,big.size*1.2,big.size*.7,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-big.size*1.2,0); ctx.lineTo(-big.size*1.8,big.size*.5); ctx.lineTo(-big.size*1.8,-big.size*.5); ctx.closePath(); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(big.size*.5,-big.size*.15,4,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(big.size*.55,-big.size*.15,2,0,Math.PI*2); ctx.fill(); ctx.restore();
+    requestAnimationFrame(loop);
+  }
+  loop();
+</script>
+</body>
+</html>
